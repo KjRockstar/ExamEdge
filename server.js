@@ -1,12 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ExamEdge AI backend is running ✅' });
@@ -15,12 +12,21 @@ app.get('/health', (req, res) => {
 app.post('/analyze', async (req, res) => {
   try {
     const { prompt } = req.body;
-    const message = await client.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }]
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }]
+      })
     });
-    res.json({ content: message.content });
+    const data = await response.json();
+    res.json(data);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
