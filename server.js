@@ -2,7 +2,13 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json({ limit: '50mb' }));
 
 app.get('/health', (req, res) => {
@@ -12,6 +18,8 @@ app.get('/health', (req, res) => {
 app.post('/analyze', async (req, res) => {
   try {
     const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'No prompt provided' });
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -25,10 +33,15 @@ app.post('/analyze', async (req, res) => {
         messages: [{ role: 'user', content: prompt }]
       })
     });
+
     const data = await response.json();
+    console.log('Anthropic response status:', response.status);
+    if (!response.ok) {
+      return res.status(500).json({ error: data.error?.message || 'Anthropic API error' });
+    }
     res.json(data);
   } catch (err) {
-    console.error(err);
+    console.error('Error:', err);
     res.status(500).json({ error: err.message });
   }
 });
